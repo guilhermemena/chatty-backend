@@ -15,7 +15,7 @@ import 'express-async-errors';
 
 import { config } from '@root/config';
 import applicationRoutes from '@root/routes';
-import { CustomError, IErrorResponse } from '@global/helpers/error-handler';
+import { CustomError, IErrorResponse, JoiRequestValidationError } from '@global/helpers/error-handler';
 
 const SERVER_PORT = 5000;
 
@@ -72,6 +72,9 @@ export class ChattyServer {
     app.use((error: IErrorResponse, _req: Request, res: Response, next: NextFunction) => {
       log.error(error);
       if(error instanceof CustomError) {
+        return res.status(error.statusCode).json({errors: error.serializeErrors()});
+      }
+      if(error instanceof JoiRequestValidationError) {
         return res.status(error.statusCode).json(error.serializeErrors());
       }
       next();

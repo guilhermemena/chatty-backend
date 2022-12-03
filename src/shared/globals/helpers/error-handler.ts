@@ -1,4 +1,5 @@
 import HTTP_STATUS from 'http-status-codes';
+import { ValidationError } from 'joi';
 
 export interface IErrorResponse {
   message: string;
@@ -9,7 +10,9 @@ export interface IErrorResponse {
 
 
 export interface IError {
-  message: string;
+  errors: {
+    message: string;
+  }[];
   statusCode: number;
   status: string;
 }
@@ -24,24 +27,24 @@ export abstract class CustomError extends Error {
 
   serializeErrors(): IError {
     return {
-      message: this.message,
+      errors: [{ message: this.message }],
       status: this.status,
       statusCode: this.statusCode
     };
   }
 }
 
-export class JoiRequestValidationError extends CustomError {
-  statusCode = HTTP_STATUS.BAD_REQUEST;
-  status = 'error';
+// export class JoiRequestValidationError extends CustomError {
+//   statusCode = HTTP_STATUS.BAD_REQUEST;
+//   status = 'error';
 
-  constructor(message: string) {
-    super(message);
-  }
-}
+//   constructor(message: string) {
+//     super(message);
+//   }
+// }
 
 export class BadRequestError extends CustomError {
-  statusCode = HTTP_STATUS.BAD_GATEWAY;
+  statusCode = HTTP_STATUS.BAD_REQUEST;
   status = 'error';
 
   constructor(message: string) {
@@ -82,5 +85,27 @@ export class ServerError extends CustomError {
 
   constructor(message: string) {
     super(message);
+  }
+}
+
+
+export class JoiRequestValidationError extends Error {
+  statusCode = HTTP_STATUS.BAD_REQUEST;
+  status = 'error';
+
+  constructor(public error: ValidationError ) {
+    super();
+
+    Object.setPrototypeOf(this, JoiRequestValidationError.prototype);
+  }
+
+  serializeErrors() {
+    return {
+      statusCode: this.statusCode,
+      status: this.status,
+      errors: this.error.details.map((err) => {
+        return { message: err.message, field: err.context?.key };
+      })
+    };
   }
 }
